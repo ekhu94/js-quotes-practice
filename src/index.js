@@ -27,8 +27,12 @@ const postQuote = quote => {
 }
 
 const deleteQuote = quote => {
-    axios.get(`http://localhost:3000/likes/${quote.id}`)
-        .then(res => console.log(res.data))
+    axios.delete(`http://localhost:3000/quotes/${quote.id}`)
+        .then(res => {
+            const li = document.getElementById(quote.id)
+            li.remove();
+        })
+        .catch(err => console.log(err));
 }
 
 const createQuote = quote => {

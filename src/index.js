@@ -1,38 +1,47 @@
-const list = document.querySelector('#quote-list');
+const ul = document.querySelector('#quote-list');
 const form = document.querySelector('#new-quote-form');
 
 document.addEventListener('DOMContentLoaded', () => {
-    getQuotes();
+  getQuotes();
 
-    form.addEventListener('submit', handlePost)
-});
+  form.addEventListener('submit', handlePost)
+})
 
-const getQuotes = () => {
-    axios.get('http://localhost:3000/quotes?_embed=likes')
-        .then(res => {
-            for (let quote of res.data) {
-                createQuote(quote);
-            }
-        })
-        .catch(err => console.log(err));
+const getQuotes = async () => {
+    const res = await axios.get('http://localhost:3000/quotes?_embed=likes');
+    for (let quote of res.data) createQuote(quote);
 }
 
-const postQuote = quote => {
-    axios.post('http://localhost:3000/quotes?_embed=likes', quote)
-        .then(res => {
-            const li = createQuote(res.data);
-            list.appendChild(li);
-        })
-        .catch(err => console.log(err));
+const getLikes = async id => {
+    const res = await axios.get('http://localhost:3000/likes');
+    let count = 0;
+    for (let like of res.data) {
+        if (like.quoteId == id) count++;
+    }
+    const li = document.getElementById(id);
+    const span = li.querySelector('span')
+    span.innerText = count;
 }
 
-const deleteQuote = quote => {
-    axios.delete(`http://localhost:3000/quotes/${quote.id}`)
-        .then(res => {
-            const li = document.getElementById(quote.id)
-            li.remove();
-        })
-        .catch(err => console.log(err));
+const postQuote = async quote => {
+    const res = await axios.post('http://localhost:3000/quotes?_embed=likes', quote)
+    createQuote(res.data);
+}
+
+const updateLikes = async quote => {
+    const res = await axios.post(`http://localhost:3000/likes`, {
+        quoteId: quote.id,
+        createdAt: Math.floor((new Date()).getTime() / 1000)
+    })
+    const li = document.getElementById(quote.id);
+    const span = li.querySelector('span')
+    span.innerText = getLikes(quote.id)
+}
+
+const deleteQuote = async quote => {
+    const res = await axios.delete(`http://localhost:3000/quotes/${quote.id}/?_embed=likes`)
+    const li = document.getElementById(quote.id);
+    li.remove();
 }
 
 const createQuote = quote => {
@@ -52,31 +61,28 @@ const createQuote = quote => {
     p.innerText = quote.quote;
     footer.className = 'blockquote-footer';
     footer.innerText = quote.author;
-    
     likeBtn.className = 'btn-success';
     likeBtn.innerText = 'Likes: ';
-    span.innerText = 0;
-    likeBtn.appendChild(span);
+    span.innerText = getLikes(li.id);
     deleteBtn.className = 'btn-danger';
     deleteBtn.innerText = 'Delete';
 
-    //! Event handlers for like and del buttons
+    likeBtn.addEventListener('click', () => updateLikes(quote))
     deleteBtn.addEventListener('click', () => deleteQuote(quote))
 
+    likeBtn.appendChild(span);
     blockquote.append(p, footer, br, likeBtn, deleteBtn);
     li.appendChild(blockquote);
-    list.appendChild(li);
+    ul.appendChild(li);
 }
 
-const handlePost = (e) => {
+const handlePost = e => {
     e.preventDefault();
-    if (e.target.quote.value !== "" && e.target.author.value !== "") {
-        const newQuote = {
-            quote: e.target.quote.value,
-            author: e.target.author.value
-        }
-        postQuote(newQuote);
-        e.target.quote.value = "";
-        e.target.author.value = "";
+    const quote = {
+        quote: e.target.quote.value,
+        author: e.target.author.value
     }
+    postQuote(quote);
+    e.target.quote.value = ""
+    e.target.author.value = ""
 }
